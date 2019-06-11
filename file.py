@@ -61,30 +61,43 @@ def parse_email(file, player_name):
         i=0
         while i < len(lines):
             line = lines[i]
-            tournament = re.search("", line)
+            tournament = re.search("PokerStars Tournament #(\d+),", line)
             if(tournament):
                 #Extract data from lines
                 tournament = tournament.group(1)                                                # PokerStars Tournament #2625783044, No Limit Hold'em<br>
-                stakes = re.search("\$(\d+.\d+)\/\$(\d+.\d+)\s", lines[i+1])                        #Buy-In: $0.09/$0.01 USD<br>
-                buyin = stakes.group(1)
-                reg_fee = stakes.group(2)
-                stakes = re.search("", lines[i+2]).group(1)               #360 players<br>
-                prize_pool = re.search("", lines[i+3]).group(1)     #Total Prize Pool: $32.40 USD <br>
-                datetime = re.search("", lines[i+4])       #Tournament started 2019/06/08 11:25:59 WET [2019/06/08 6:25:59 ET]<br>
-                date = datetime.group(1)
-                time = datetime.group(2)
-                # Search for placement...
-                for x in range(players):
-                    if(re.search(lines[i+x + 5]),"[d]+:" + player_name + ".*"):
-                        placement = lines[i+x + 5] #&nbsp; 12: Hazzaeve (United Kingdom), $0.51 (1.574%)<br>
-                        prize = lines[i+x + 5]
+                stakes_match = re.search("\$(\d+.\d+)\/\$(\d+.\d+)\s", lines[i+1])                        #Buy-In: $0.09/$0.01 USD<br>
+                players_match = re.search("(\d+) players", lines[i+2])               #360 players<br>
+                prize_pool_match = re.search("Total Prize Pool: \$(\d+\.\d+)", lines[i+3])     #Total Prize Pool: $32.40 USD <br>
+                datetime_match = re.search("Tournament \w+ (\d+/\d+/\d+ \d+:\d+:\d+ \w+) \[(\d+/\d+/\d+ \d+:\d+:\d+ \w+)\]", lines[i+4])       #Tournament started 2019/06/08 11:25:59 WET [2019/06/08 6:25:59 ET]<br>
+                if(stakes_match and players_match and prize_pool_match and datetime_match):
+                    buyin = stakes_match.group(1)
+
+                    reg_fee = stakes_match.group(2)
+                    
+                    players = players_match.group(1)
+                    prize_pool = prize_pool_match.group(1)
+
+                    date = datetime_match.group(1)
+                    time = datetime_match.group(2)
+                    # Search for placement...
+                    #print(i)
+                    for x in range(int(players) + 10):
+                        #print(lines[i+x + 5])
+                        placement_search = re.search("(\d+): " + player_name + " \(.+\), ?\$?(\d+\.\d+)?\s", lines[i+x])
+                        if(placement_search):
+                            placement = placement_search.group(1) #&nbsp; 12: Hazzaeve (United Kingdom), $0.51 (1.574%)<br>
+                            if(placement_search.group(2)):
+                                payout = placement_search.group(2)
+                            else:
+                                payout = "0.00"
 
 
-                        #Create Row
-                        #Append Row
-                        print(date + "," + tournament + "," + buyin + "," +  players + "," + placement + "," + ","  + payout + "," + prize_pool + "," + buyin + "," + reg_fee)
-                        i += players
-                    break
+                            #Create Row
+                            #Append Row
+                            print(date + "," + tournament + "," + buyin + "," +  players + "," + placement + "," + ","  + payout + "," + prize_pool + "," + buyin + "," + reg_fee)
+                            i += int(players) - 1
+                            break
+                i += 1
                 
             else:
                 i += 1
