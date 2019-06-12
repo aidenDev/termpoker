@@ -67,114 +67,118 @@ def parse_email(file, player_name):
     with open(file, 'r') as email_file:
 
         print("Date, Tournament, Buy-In, Num Players, Position Placed, Notes, Payout, Prize-pool, Buyin, Reg-Fee")
-
         lines = email_file.readlines()
         i = 0
         g = 0
         sum_payouts = 0.00
         sum_buyins = 0.00
         while i < len(lines):
+            tournament = None
             line = lines[i]
-            tournament = re.search("PokerStars Tournament #(\d+),", line)
-            if(tournament):
-                # Extract data from lines
-                tournament = tournament.group(1)
-                stakes_match = re.search(
-                    "(Buy-In: \$(\d+.\d+)\/?\$?(\d+.\d+)?\s)|(Freeroll)", lines[i+1])
-
-                players_match = re.search("(\d+) players", lines[i+2])
-
-                prize_pool_match = re.search(
-                    "Total Prize Pool: \$(\d+\.\d+)", lines[i+3])
-                datetime_match = re.search(
-                    "Tournament \w+ (\d+/\d+/\d+) (\d+:\d+:\d+ \w+) \[(\d+/\d+/\d+ \d+:\d+:\d+ \w+)\]", lines[i+4])
-
-                i2 = 1
-                while(not stakes_match and i2 < 6):
+            try:
+                tournament = re.search("PokerStars Tournament #(\d+),", line)
+                if(tournament):
+                    # Extract data from lines
+                    tournament = tournament.group(1)
                     stakes_match = re.search(
-                        "(Buy-In: \$(\d+.\d+)\/?\$?(\d+.\d+)?\s)|(Freeroll)", lines[i+1 + i2])
-                    i2 += 1
-                i2 = 1
+                        "(Buy-In: \$(\d+.\d+)\/?\$?(\d+.\d+)?\s)|(Freeroll)", lines[i+1])
 
-                while(not players_match and i2 < 6):
-                    players_match = re.search(
-                        "(\d+) players", lines[i+2 + i2])
-                    i2 += 1
-                i2 = 1
+                    players_match = re.search("(\d+) players", lines[i+2])
 
-                while(not prize_pool_match and i2 < 6):
                     prize_pool_match = re.search(
-                        "Total Prize Pool: \$(\d+\.\d+)", lines[i+3 + i2])
-                    i2 += 1
-                i2 = 1
-
-                while(not datetime_match and i2 < 6):
+                        "Total Prize Pool: \$(\d+\.\d+)", lines[i+3])
                     datetime_match = re.search(
-                        "Tournament \w+ (\d+/\d+/\d+) (\d+:\d+:\d+ \w+) \[(\d+/\d+/\d+ \d+:\d+:\d+ \w+)\]", lines[i+4 + i2])
-                    i2 += 1
+                        "Tournament \w+ (\d+/\d+/\d+) (\d+:\d+:\d+ \w+) \[(\d+/\d+/\d+ \d+:\d+:\d+ \w+)\]", lines[i+4])
 
-                if(stakes_match and players_match and prize_pool_match and datetime_match):
-                    # If tournament is a freeroll
-                    # print(lines[i+1])
-                    # print(stakes_match)
-                    if(stakes_match.group(4)):
-                        buyin = "0.00"
-                        reg_fee = "0.00"
-                    else:
-                        buyin = stakes_match.group(2)
-                        reg_fee = stakes_match.group(3)
-                        if(not reg_fee):
+                    i2 = 1
+                    while(not stakes_match and i2 < 6):
+                        stakes_match = re.search(
+                            "(Buy-In: \$(\d+.\d+)\/?\$?(\d+.\d+)?\s)|(Freeroll)", lines[i+1 + i2])
+                        i2 += 1
+                    i2 = 1
+
+                    while(not players_match and i2 < 6):
+                        players_match = re.search(
+                            "(\d+) players", lines[i+2 + i2])
+                        i2 += 1
+                    i2 = 1
+
+                    while(not prize_pool_match and i2 < 6):
+                        prize_pool_match = re.search(
+                            "Total Prize Pool: \$(\d+\.\d+)", lines[i+3 + i2])
+                        i2 += 1
+                    i2 = 1
+
+                    while(not datetime_match and i2 < 6):
+                        datetime_match = re.search(
+                            "Tournament \w+ (\d+/\d+/\d+) (\d+:\d+:\d+ \w+) \[(\d+/\d+/\d+ \d+:\d+:\d+ \w+)\]", lines[i+4 + i2])
+                        i2 += 1
+
+                    if(stakes_match and players_match and prize_pool_match and datetime_match):
+
+                        # If tournament is a freeroll
+                        if(stakes_match.group(4)):
+                            buyin = "0.00"
                             reg_fee = "0.00"
+                        else:
+                            buyin = stakes_match.group(2)
+                            reg_fee = stakes_match.group(3)
+                            # For tournaments with no registration fee such as the $0.02 sit & go
+                            if(not reg_fee):
+                                reg_fee = "0.00"
 
-                    players = players_match.group(1)
-                    prize_pool = prize_pool_match.group(1)
+                        players = players_match.group(1)
+                        prize_pool = prize_pool_match.group(1)
 
-                    date = datetime_match.group(1)
-                    time = datetime_match.group(2)
-                    # Search for placement...
-                    # print(i)
-                    for x in range(int(players) + 10):
-                        placement_search = re.search(
-                            "(\d+): " + player_name + " \(.+\), ?\$?(\d+\.\d+)?\s", lines[i+x])
-                        if(placement_search):
-                            # &nbsp; 12: Hazzaeve (United Kingdom), $0.51 (1.574%)<br>
-                            placement = placement_search.group(1)
-                            if(placement_search.group(2)):
-                                payout = placement_search.group(2)
-                            else:
-                                payout = "0.00"
-                            g += 1
+                        date = datetime_match.group(1)
+                        time = datetime_match.group(2)
+
+                        # Search for placement
+                        for x in range(int(players) + 10):
+                            placement_search = re.search(
+                                "(\d+): " + player_name + " \(.+\), ?\$?(\d+\.\d+)?\s", lines[i+x])
+                            if(placement_search):
+                                placement = placement_search.group(1)
+                                # Payout will be in group 2, if there is a payout
+                                if(placement_search.group(2)):
+                                    payout = placement_search.group(2)
+                                else:
+                                    payout = "0.00"
+                                g += 1
 
 
-                            total_buyin = round(float(buyin) + float(reg_fee),2)
-                            sum_buyins += total_buyin
-                            sum_payouts += float(payout)
-                            # Create Row
-                            # Append Row
-                            # arr.append(date + "," + tournament + "," + buyin + "," + players + "," +
-                            #           placement + "," + "," + payout + "," + prize_pool + "," + buyin + "," + reg_fee)
-                            arr.append([date,  tournament,  total_buyin,  players,
-                                        placement, "",  payout,  prize_pool,  buyin,  reg_fee])
-                            #print(date + "," + tournament + "," + buyin + "," +  players + "," + placement + "," + ","  + payout + "," + prize_pool + "," + buyin + "," + reg_fee)
-                            i += int(players) - 1
-                            break
+                                total_buyin = round(float(buyin) + float(reg_fee),2)
+                                sum_buyins += total_buyin
+                                sum_payouts += float(payout)
+                                arr.append([date,  tournament,  total_buyin,  players,
+                                            placement, "",  payout,  prize_pool,  buyin,  reg_fee])
+                                #print(date + "," + tournament + "," + buyin + "," +  players + "," + placement + "," + ","  + payout + "," + prize_pool + "," + buyin + "," + reg_fee)
+                                i += int(players) - 1
+                                break
+                    else:
+                        # For debugging
+                        if(False):
+                            print()
+                            print(tournament)
+                            print(stakes_match)
+                            print(players_match)
+                            print(prize_pool_match)
+                            print(datetime_match)
+                        i += 1
+
                 else:
-                    # For debugging
-                    if(False):
-                        print()
-                        print(tournament)
-                        print(stakes_match)
-                        print(players_match)
-                        print(prize_pool_match)
-                        print(datetime_match)
                     i += 1
-
-            else:
+            except:
+                if(tournament):
+                    print("The email may be malformed in some way for tournament {}, it has been skipped".format(tournament))
                 i += 1
     for l in reversed(arr):
-        print(l)
+        
         if not tournament_added(l[1]):
             append_row(l)
+            print("Added row", l, "to the database")
+        else:
+            print("Did not add row", l, "to the database as it is a duplicate")
     print("Num tournaments: {}, Total Buyins:${}, Total Payouts:${}, Profit/loss:${}".format(g,round(sum_buyins,2),round(sum_payouts,2),round(sum_payouts-sum_buyins,2)))
 
 
