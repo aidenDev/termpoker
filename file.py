@@ -2,8 +2,8 @@ import csv
 import re
 import sys
 
-COLUMN_TITLE_ROW = ["datetime", "name",
-                    "buyin", "players", "position", "payout"]
+COLUMN_TITLE_ROW = ["Date",  "Tournament ID", "Total Buyin",  "Number of Players",
+                    "Placement", "Notes",  "Payout",  "Prize Pool",  "Buyin",  "Registration Fee"]
 DIR_NAME = "termpoker_game_log.csv"
 
 # determine if a termpoker CSV file already exists
@@ -19,12 +19,15 @@ def csv_file_exists():
 
 
 def save_game(game):
-    row = [game["datetime"],
-           game["name"],
-           game["buyin"],
-           game["players"],
-           game["position"],
-           game["payout"]]
+    row = [game["Date"],
+           game["Tournament ID"],
+           game["Total Buyin"],
+           game["Number of Players"],
+           game["Placement"],
+           game["Notes"],
+           game["Payout"],
+           game["Prize Pool"],
+           game["Registration Fee"]]
 
     if (not csv_file_exists()):
         create_csv()
@@ -48,12 +51,18 @@ def append_row(row):
         writer = csv.writer(csvFile)
         writer.writerow(row)
 
-    csvFile.close()
+
+def tournament_added(id):
+    with open(DIR_NAME, 'r') as csvFile:
+        reader = csv.reader(csvFile)
+        for row in reader:
+            if(row[1] == id):
+                return True
+    return False
 
 
 # parse PokerStars tournament request email
 def parse_email(file, player_name):
-
     arr = []
     with open(file, 'r') as email_file:
 
@@ -61,8 +70,9 @@ def parse_email(file, player_name):
 
         lines = email_file.readlines()
         i = 0
-        a = 0
         g = 0
+        sum_payouts = 0.00
+        sum_buyins = 0.00
         while i < len(lines):
             line = lines[i]
             tournament = re.search("PokerStars Tournament #(\d+),", line)
@@ -124,7 +134,6 @@ def parse_email(file, player_name):
                     # Search for placement...
                     # print(i)
                     for x in range(int(players) + 10):
-                        #print(lines[i+x + 5])
                         placement_search = re.search(
                             "(\d+): " + player_name + " \(.+\), ?\$?(\d+\.\d+)?\s", lines[i+x])
                         if(placement_search):
@@ -135,14 +144,22 @@ def parse_email(file, player_name):
                             else:
                                 payout = "0.00"
                             g += 1
+
+
+                            total_buyin = round(float(buyin) + float(reg_fee),2)
+                            sum_buyins += total_buyin
+                            sum_payouts += float(payout)
                             # Create Row
                             # Append Row
-                            arr.append(date + "," + tournament + "," + buyin + "," +  players + "," + placement + "," + ","  + payout + "," + prize_pool + "," + buyin + "," + reg_fee)
+                            # arr.append(date + "," + tournament + "," + buyin + "," + players + "," +
+                            #           placement + "," + "," + payout + "," + prize_pool + "," + buyin + "," + reg_fee)
+                            arr.append([date,  tournament,  total_buyin,  players,
+                                        placement, "",  payout,  prize_pool,  buyin,  reg_fee])
                             #print(date + "," + tournament + "," + buyin + "," +  players + "," + placement + "," + ","  + payout + "," + prize_pool + "," + buyin + "," + reg_fee)
                             i += int(players) - 1
                             break
                 else:
-                    #For debugging
+                    # For debugging
                     if(False):
                         print()
                         print(tournament)
@@ -156,7 +173,11 @@ def parse_email(file, player_name):
                 i += 1
     for l in reversed(arr):
         print(l)
-    print(g)
+        if not tournament_added(l[1]):
+            append_row(l)
+    print("Num tournaments: {}, Total Buyins:${}, Total Payouts:${}, Profit/loss:${}".format(g,round(sum_buyins,2),round(sum_payouts,2),round(sum_payouts-sum_buyins,2)))
 
 
+if not csv_file_exists():
+    create_csv()
 parse_email(sys.argv[1], sys.argv[2])
