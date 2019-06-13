@@ -6,6 +6,8 @@ COLUMN_TITLE_ROW = ["Date",  "Tournament ID", "Total Buyin",  "Number of Players
                     "Placement", "Notes",  "Payout",  "Prize Pool",  "Buyin",  "Registration Fee"]
 DIR_NAME = "termpoker_game_log.csv"
 
+player_history = {}
+
 # determine if a termpoker CSV file already exists
 
 
@@ -137,6 +139,7 @@ def parse_email(file, player_name):
                         for x in range(int(players) + 10):
                             placement_search = re.search(
                                 "(\d+): " + player_name + " \(.+\), ?\$?(\d+\.\d+)?\s", lines[i+x])
+
                             if(placement_search):
                                 placement = placement_search.group(1)
                                 # Payout will be in group 2, if there is a payout
@@ -154,7 +157,16 @@ def parse_email(file, player_name):
                                             placement, "",  payout,  prize_pool,  buyin,  reg_fee])
                                 #print(date + "," + tournament + "," + buyin + "," +  players + "," + placement + "," + ","  + payout + "," + prize_pool + "," + buyin + "," + reg_fee)
                                 i += int(players) - 1
-                                break
+                            player_search = re.search(
+                                "(\d+): (.*) \(.+\), ?\$?(\d+\.\d+)?\s", lines[i+x])
+                            if(player_search):
+                                player = player_search.group(2)
+                                if player in player_history:
+                                    player_history[player]+= 1
+                                else:
+                                    player_history[player] = 1
+
+                        
                     else:
                         # For debugging
                         if(False):
@@ -185,3 +197,7 @@ def parse_email(file, player_name):
 if not csv_file_exists():
     create_csv()
 parse_email(sys.argv[1], sys.argv[2])
+with open("playerhistory.csv","w") as file:
+    for i in sorted(player_history.items(), key = lambda kv:(kv[1], kv[0])):
+        file.write(i[0] + "," + str(i[1]) +"\n")
+
